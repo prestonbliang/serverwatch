@@ -1,0 +1,1 @@
+SO BASICALLY, I USED MY PRIOR CODE FROM BASH_DESKTOP, which btw is not done, i wanted to get the 1.1x mult, and im gonna use it to make a serverwatch/scanner for my macbook homelab :D
