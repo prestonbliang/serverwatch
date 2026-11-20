@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2034,SC1090 # globals are shared with the other files, and the config file is sourced
+# serverwatch script
+
+#check bash 5
+if (( BASH_VERSINFO[0] < 5 )); then
+    echo "This script requires Bash 5 or higher." >&2
+    exit 1
+fi
+
+#project folder is one level above this one
+#so it can work no matter which folder u run
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}" )/.." && pwd)
+
+
+for f in term input render loop collect view; do
+    #shellcheck source=/dev/null
+    source "$ROOT/lib/$f.sh"
+done
+
+
+#settings
+HOST=$(hostname -s)
+CONF=${SW_CONF:-$HOME/.serverwatch.conf}
+
+[[ -r $CONF ]] && source "$CONF"
+
+#statefile
+STATE=$(mktemp "${TMPDIR:-/tmp}/serverwatch.XXXXXX")
+PARENT=$$
+PID=0
+
+trap '(( PID )) && kill "$PID" 2>/dev/null; rm -f "$STATE" "$STATE.tmp"; term_restore' EXIT
+
+#pick mode
+
+case ${1:-} in
+    "")
+        [[ -t 0 && -t 1 ]] || { echo "serverwatch needs a terminal (try --once)" >&2; exit 1; }     
+        term_init || exit 1
+        render_init
+        TICK=0.5
+        sw_loop </dev/null >/dev/null 2>&1 &
+        PID=$!
+        main_loop
+        ;;
+
+
+    --once)
+        ONCE=1
+        sw_loop
+        declare -p CPU MEM MEMU MEMT RX TX LOAD UPT DISKS PORTS CHK
+        exit $(( ${#ONK[@]} > 0 ))
+        ;;
+
+    --daemon)
+        sw_loop 
+        ;;
+    
+    *)
+        echo "usage: serverwatch [--once] [--daemon]" >&2
+        exit 2
+        ;;
+esac
